@@ -75,7 +75,6 @@ public class SusChunkAddon extends MeteorAddon {
             .visible(chatAlert::get)
             .build());
 
-        // Block / entity toggles
         private final Setting<Boolean> detectDebris = sgDetect.add(new BoolSetting.Builder()
             .name("ancient-debris")
             .description("Detect ancient debris (Nether and Overworld).")
@@ -109,7 +108,6 @@ public class SusChunkAddon extends MeteorAddon {
         private final Setting<Boolean> detectPistons = sgDetect.add(new BoolSetting.Builder()
             .name("pistons").defaultValue(true).build());
 
-        // Render
         private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
             .name("shape-mode").defaultValue(ShapeMode.Lines).build());
 
@@ -161,7 +159,6 @@ public class SusChunkAddon extends MeteorAddon {
             int bottomY = mc.world.getBottomY();
             int topY    = Math.min(yLimit.get(), mc.world.getTopYInclusive());
 
-            // ---- Block scan ----
             BlockPos.Mutable pos = new BlockPos.Mutable();
 
             for (int cx = origin.x - range; cx <= origin.x + range; cx++) {
@@ -176,7 +173,6 @@ public class SusChunkAddon extends MeteorAddon {
                             for (int by = bottomY; by < topY; by++) {
                                 pos.set(bx, by, bz);
                                 Block b = mc.world.getBlockState(pos).getBlock();
-
                                 if (detectDebris.get() && b == Blocks.ANCIENT_DEBRIS) {
                                     dTriggers.add("Ancient Debris");
                                 } else {
@@ -193,16 +189,13 @@ public class SusChunkAddon extends MeteorAddon {
                 }
             }
 
-            // ---- Entity scan (armor stands) ----
             if (detectArmorStands.get()) {
                 for (var entity : mc.world.getEntities()) {
                     if (!(entity instanceof ArmorStandEntity)) continue;
                     if (entity.getY() >= topY) continue;
-
                     ChunkPos cp = entity.getChunkPos();
                     if (Math.abs(cp.x - origin.x) > range) continue;
                     if (Math.abs(cp.z - origin.z) > range) continue;
-
                     susChunks.computeIfAbsent(cp, k -> new LinkedHashSet<>()).add("Armor Stand");
                     if (chatAlert.get() && announced.add(cp)) {
                         info("(highlight)Sus chunk(default) at X:%d Z:%d — Armor Stand",
@@ -212,7 +205,6 @@ public class SusChunkAddon extends MeteorAddon {
                 }
             }
 
-            // Forget chunks that left range
             Set<ChunkPos> allFound = new HashSet<>();
             allFound.addAll(susChunks.keySet());
             allFound.addAll(debrisChunks.keySet());
@@ -223,8 +215,7 @@ public class SusChunkAddon extends MeteorAddon {
             if (triggers.isEmpty()) return;
             map.put(cp, triggers);
             if (chatAlert.get() && announced.add(cp)) {
-                boolean isDebris = map == debrisChunks;
-                if (isDebris) {
+                if (map == debrisChunks) {
                     info("(gold)Ancient Debris(default) chunk at X:%d Z:%d", cp.getStartX(), cp.getStartZ());
                 } else {
                     info("(highlight)Sus chunk(default) at X:%d Z:%d — %s",
@@ -242,13 +233,13 @@ public class SusChunkAddon extends MeteorAddon {
         }
 
         private String identifyBlock(Block b) {
-            if (detectNetherite.get()   && b == Blocks.NETHERITE_BLOCK)                           return "Netherite Block";
-            if (detectSpawners.get()    && b == Blocks.SPAWNER)                                    return "Spawner";
-            if (detectChests.get()      && (b == Blocks.CHEST || b == Blocks.TRAPPED_CHEST))      return "Chest";
-            if (detectEnderChests.get() && b == Blocks.ENDER_CHEST)                               return "Ender Chest";
-            if (detectHoppers.get()     && b == Blocks.HOPPER)                                    return "Hopper";
-            if (detectPistons.get()     && (b == Blocks.PISTON || b == Blocks.STICKY_PISTON))     return "Piston";
-            if (detectRedstone.get()    && isRedstone(b))                                         return "Redstone";
+            if (detectNetherite.get()   && b == Blocks.NETHERITE_BLOCK)                        return "Netherite Block";
+            if (detectSpawners.get()    && b == Blocks.SPAWNER)                                return "Spawner";
+            if (detectChests.get()      && (b == Blocks.CHEST || b == Blocks.TRAPPED_CHEST))  return "Chest";
+            if (detectEnderChests.get() && b == Blocks.ENDER_CHEST)                           return "Ender Chest";
+            if (detectHoppers.get()     && b == Blocks.HOPPER)                                return "Hopper";
+            if (detectPistons.get()     && (b == Blocks.PISTON || b == Blocks.STICKY_PISTON)) return "Piston";
+            if (detectRedstone.get()    && isRedstone(b))                                     return "Redstone";
             return null;
         }
 
