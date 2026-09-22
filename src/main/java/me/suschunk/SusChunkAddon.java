@@ -274,21 +274,22 @@ public class SusChunkAddon extends MeteorAddon {
         }
 
         private String identifySpawner(BlockPos immutablePos) {
-            try {
-                var be = mc.world.getBlockEntity(immutablePos);
-                if (!(be instanceof MobSpawnerBlockEntity spawner)) return null;
-                NbtCompound nbt = spawner.createNbt(mc.world.getRegistryManager());
-                String mobId = nbt.getCompound("SpawnData").getCompound("entity").getString("id");
+    try {
+        var be = mc.world.getBlockEntity(immutablePos);
+        if (!(be instanceof MobSpawnerBlockEntity spawner)) return null;
+        NbtCompound nbt = spawner.createNbt(mc.world.getRegistryManager());
+        NbtCompound spawnData = nbt.getCompound("SpawnData").orElse(new NbtCompound());
+        NbtCompound entity   = spawnData.getCompound("entity").orElse(new NbtCompound());
+        String mobId         = entity.getString("id").orElse("");
 
-                if (mobId.equals("minecraft:skeleton")    && detectSkeletonSpawner.get()) return "Skeleton Spawner";
-                if (mobId.equals("minecraft:zombie")      && detectZombieSpawner.get())   return "Zombie Spawner";
-                if (mobId.equals("minecraft:spider")      && detectSpiderSpawner.get())   return "Spider Spawner";
-                if (mobId.equals("minecraft:cave_spider") && detectSpiderSpawner.get())   return "Cave Spider Spawner";
-                if (mobId.equals("minecraft:blaze")       && detectBlazeSpawner.get())    return "Blaze Spawner";
-            } catch (Exception ignored) {}
-            return null;
-        }
-
+        if (mobId.equals("minecraft:skeleton")    && detectSkeletonSpawner.get()) return "Skeleton Spawner";
+        if (mobId.equals("minecraft:zombie")      && detectZombieSpawner.get())   return "Zombie Spawner";
+        if (mobId.equals("minecraft:spider")      && detectSpiderSpawner.get())   return "Spider Spawner";
+        if (mobId.equals("minecraft:cave_spider") && detectSpiderSpawner.get())   return "Cave Spider Spawner";
+        if (mobId.equals("minecraft:blaze")       && detectBlazeSpawner.get())    return "Blaze Spawner";
+    } catch (Exception ignored) {}
+    return null;
+}
         private boolean isRedstone(Block b) {
             return b == Blocks.REDSTONE_WIRE || b == Blocks.REDSTONE_TORCH
                 || b == Blocks.REDSTONE_WALL_TORCH || b == Blocks.COMPARATOR
