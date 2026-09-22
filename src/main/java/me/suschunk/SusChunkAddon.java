@@ -12,8 +12,10 @@ import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
@@ -40,58 +42,52 @@ public class SusChunkAddon extends MeteorAddon {
     }
 
     public static class SusChunkFinder extends Module {
-        private final SettingGroup sgGeneral = settings.getDefaultGroup();
-        private final SettingGroup sgDetect  = settings.createGroup("Detect");
-        private final SettingGroup sgRender  = settings.createGroup("Render");
+        private final SettingGroup sgGeneral  = settings.getDefaultGroup();
+        private final SettingGroup sgDetect   = settings.createGroup("Detect");
+        private final SettingGroup sgSpawners = settings.createGroup("Spawners");
+        private final SettingGroup sgHeads    = settings.createGroup("Heads");
+        private final SettingGroup sgRender   = settings.createGroup("Render");
 
+        // General
         private final Setting<Integer> chunkRange = sgGeneral.add(new IntSetting.Builder()
-            .name("chunk-range")
-            .description("How many chunks out to scan around you.")
-            .defaultValue(3).min(1).sliderRange(1, 8)
-            .build());
+            .name("chunk-range").description("How many chunks out to scan around you.")
+            .defaultValue(3).min(1).sliderRange(1, 8).build());
 
         private final Setting<Integer> yLimit = sgGeneral.add(new IntSetting.Builder()
-            .name("y-limit")
-            .description("Scan blocks below this Y level. Set to 256 to scan all Y levels.")
-            .defaultValue(-5).min(-64).sliderRange(-64, 256)
-            .build());
+            .name("y-limit").description("Scan blocks below this Y level. Set to 256 for all Y levels.")
+            .defaultValue(-5).min(-64).sliderRange(-64, 256).build());
 
         private final Setting<Integer> interval = sgGeneral.add(new IntSetting.Builder()
-            .name("scan-interval")
-            .description("Ticks between scans. Raise if you get lag.")
-            .defaultValue(60).min(20).sliderRange(20, 200)
-            .build());
+            .name("scan-interval").description("Ticks between scans. Raise if you get lag.")
+            .defaultValue(60).min(20).sliderRange(20, 200).build());
 
         private final Setting<Boolean> chatAlert = sgGeneral.add(new BoolSetting.Builder()
-            .name("chat-alert")
-            .description("Send a chat message when a sus chunk is found.")
-            .defaultValue(true)
-            .build());
+            .name("chat-alert").description("Message in chat when a sus chunk is found.")
+            .defaultValue(true).build());
 
         private final Setting<Boolean> playSound = sgGeneral.add(new BoolSetting.Builder()
-            .name("play-sound")
-            .description("Ping when a sus chunk is found.")
-            .defaultValue(true)
-            .visible(chatAlert::get)
-            .build());
+            .name("play-sound").description("Ping when a sus chunk is found.")
+            .defaultValue(true).visible(chatAlert::get).build());
 
+        // Detect group
         private final Setting<Boolean> detectDebris = sgDetect.add(new BoolSetting.Builder()
-            .name("ancient-debris")
-            .description("Detect ancient debris (Nether and Overworld).")
+            .name("ancient-debris").description("Detect ancient debris (Nether and Overworld).")
             .defaultValue(true).build());
 
         private final Setting<Boolean> detectNetherite = sgDetect.add(new BoolSetting.Builder()
-            .name("netherite-block")
-            .description("Detect blocks of netherite.")
+            .name("netherite-block").defaultValue(true).build());
+
+        private final Setting<Boolean> detectBeacon = sgDetect.add(new BoolSetting.Builder()
+            .name("beacon").description("Detect beacon blocks.")
+            .defaultValue(true).build());
+
+        private final Setting<Boolean> detectReinforcedDeepslate = sgDetect.add(new BoolSetting.Builder()
+            .name("reinforced-deepslate").description("Detect reinforced deepslate (marks Ancient City).")
             .defaultValue(true).build());
 
         private final Setting<Boolean> detectArmorStands = sgDetect.add(new BoolSetting.Builder()
-            .name("armor-stands")
-            .description("Detect armor stand entities below the Y limit.")
+            .name("armor-stands").description("Detect armor stand entities below the Y limit.")
             .defaultValue(true).build());
-
-        private final Setting<Boolean> detectSpawners = sgDetect.add(new BoolSetting.Builder()
-            .name("spawners").defaultValue(true).build());
 
         private final Setting<Boolean> detectChests = sgDetect.add(new BoolSetting.Builder()
             .name("chests").defaultValue(true).build());
@@ -108,6 +104,35 @@ public class SusChunkAddon extends MeteorAddon {
         private final Setting<Boolean> detectPistons = sgDetect.add(new BoolSetting.Builder()
             .name("pistons").defaultValue(true).build());
 
+        // Spawners group
+        private final Setting<Boolean> detectSkeletonSpawner = sgSpawners.add(new BoolSetting.Builder()
+            .name("skeleton-spawner").defaultValue(true).build());
+
+        private final Setting<Boolean> detectZombieSpawner = sgSpawners.add(new BoolSetting.Builder()
+            .name("zombie-spawner").defaultValue(true).build());
+
+        private final Setting<Boolean> detectSpiderSpawner = sgSpawners.add(new BoolSetting.Builder()
+            .name("spider-spawner").description("Detects spider and cave spider spawners.")
+            .defaultValue(true).build());
+
+        private final Setting<Boolean> detectBlazeSpawner = sgSpawners.add(new BoolSetting.Builder()
+            .name("blaze-spawner").description("Blaze spawners in Nether Fortresses.")
+            .defaultValue(true).build());
+
+        // Heads group
+        private final Setting<Boolean> detectDragonHead = sgHeads.add(new BoolSetting.Builder()
+            .name("dragon-head").defaultValue(true).build());
+
+        private final Setting<Boolean> detectZombieHead = sgHeads.add(new BoolSetting.Builder()
+            .name("zombie-head").defaultValue(true).build());
+
+        private final Setting<Boolean> detectCreeperHead = sgHeads.add(new BoolSetting.Builder()
+            .name("creeper-head").defaultValue(true).build());
+
+        private final Setting<Boolean> detectPiglinHead = sgHeads.add(new BoolSetting.Builder()
+            .name("piglin-head").defaultValue(true).build());
+
+        // Render
         private final Setting<ShapeMode> shapeMode = sgRender.add(new EnumSetting.Builder<ShapeMode>()
             .name("shape-mode").defaultValue(ShapeMode.Lines).build());
 
@@ -118,14 +143,10 @@ public class SusChunkAddon extends MeteorAddon {
             .name("line-color").defaultValue(new SettingColor(255, 0, 80, 220)).build());
 
         private final Setting<SettingColor> debrisSideColor = sgRender.add(new ColorSetting.Builder()
-            .name("debris-side-color")
-            .description("Chunk color for ancient debris.")
-            .defaultValue(new SettingColor(255, 160, 0, 15)).build());
+            .name("debris-side-color").defaultValue(new SettingColor(255, 160, 0, 15)).build());
 
         private final Setting<SettingColor> debrisLineColor = sgRender.add(new ColorSetting.Builder()
-            .name("debris-line-color")
-            .description("Chunk outline for ancient debris.")
-            .defaultValue(new SettingColor(255, 160, 0, 220)).build());
+            .name("debris-line-color").defaultValue(new SettingColor(255, 160, 0, 220)).build());
 
         private final Map<ChunkPos, Set<String>> susChunks    = new LinkedHashMap<>();
         private final Map<ChunkPos, Set<String>> debrisChunks = new LinkedHashMap<>();
@@ -134,7 +155,7 @@ public class SusChunkAddon extends MeteorAddon {
 
         public SusChunkFinder() {
             super(CATEGORY, "sus-chunk-finder",
-                "Finds chunks with suspicious blocks/entities below a Y threshold. Works in any dimension.");
+                "Finds chunks with suspicious blocks, specific spawner types, mob heads and ancient debris below a Y threshold.");
         }
 
         @Override
@@ -158,7 +179,6 @@ public class SusChunkAddon extends MeteorAddon {
             int range   = chunkRange.get();
             int bottomY = mc.world.getBottomY();
             int topY    = Math.min(yLimit.get(), mc.world.getTopYInclusive());
-
             BlockPos.Mutable pos = new BlockPos.Mutable();
 
             for (int cx = origin.x - range; cx <= origin.x + range; cx++) {
@@ -173,10 +193,11 @@ public class SusChunkAddon extends MeteorAddon {
                             for (int by = bottomY; by < topY; by++) {
                                 pos.set(bx, by, bz);
                                 Block b = mc.world.getBlockState(pos).getBlock();
+
                                 if (detectDebris.get() && b == Blocks.ANCIENT_DEBRIS) {
                                     dTriggers.add("Ancient Debris");
                                 } else {
-                                    String name = identifyBlock(b);
+                                    String name = identifyBlock(b, pos);
                                     if (name != null) triggers.add(name);
                                 }
                             }
@@ -189,26 +210,25 @@ public class SusChunkAddon extends MeteorAddon {
                 }
             }
 
+            // Entity scan — armor stands
             if (detectArmorStands.get()) {
+                int topY2 = Math.min(yLimit.get(), mc.world.getTopYInclusive());
                 for (var entity : mc.world.getEntities()) {
                     if (!(entity instanceof ArmorStandEntity)) continue;
-                    if (entity.getY() >= topY) continue;
+                    if (entity.getY() >= topY2) continue;
                     ChunkPos cp = entity.getChunkPos();
-                    if (Math.abs(cp.x - origin.x) > range) continue;
-                    if (Math.abs(cp.z - origin.z) > range) continue;
+                    if (Math.abs(cp.x - origin.x) > range || Math.abs(cp.z - origin.z) > range) continue;
                     susChunks.computeIfAbsent(cp, k -> new LinkedHashSet<>()).add("Armor Stand");
                     if (chatAlert.get() && announced.add(cp)) {
-                        info("(highlight)Sus chunk(default) at X:%d Z:%d — Armor Stand",
-                            cp.getStartX(), cp.getStartZ());
+                        info("(highlight)Sus chunk(default) at X:%d Z:%d — Armor Stand", cp.getStartX(), cp.getStartZ());
                         ping();
                     }
                 }
             }
 
-            Set<ChunkPos> allFound = new HashSet<>();
-            allFound.addAll(susChunks.keySet());
-            allFound.addAll(debrisChunks.keySet());
-            announced.retainAll(allFound);
+            Set<ChunkPos> all = new HashSet<>(susChunks.keySet());
+            all.addAll(debrisChunks.keySet());
+            announced.retainAll(all);
         }
 
         private void registerHit(ChunkPos cp, Set<String> triggers, Map<ChunkPos, Set<String>> map) {
@@ -228,28 +248,51 @@ public class SusChunkAddon extends MeteorAddon {
         private void ping() {
             if (!playSound.get()) return;
             mc.world.playSound(mc.player, mc.player.getBlockPos(),
-                SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(),
-                SoundCategory.PLAYERS, 1f, 1.5f);
+                SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.PLAYERS, 1f, 1.5f);
         }
 
-        private String identifyBlock(Block b) {
-            if (detectNetherite.get()   && b == Blocks.NETHERITE_BLOCK)                        return "Netherite Block";
-            if (detectSpawners.get()    && b == Blocks.SPAWNER)                                return "Spawner";
-            if (detectChests.get()      && (b == Blocks.CHEST || b == Blocks.TRAPPED_CHEST))  return "Chest";
-            if (detectEnderChests.get() && b == Blocks.ENDER_CHEST)                           return "Ender Chest";
-            if (detectHoppers.get()     && b == Blocks.HOPPER)                                return "Hopper";
-            if (detectPistons.get()     && (b == Blocks.PISTON || b == Blocks.STICKY_PISTON)) return "Piston";
-            if (detectRedstone.get()    && isRedstone(b))                                     return "Redstone";
+        private String identifyBlock(Block b, BlockPos.Mutable pos) {
+            if (detectNetherite.get()            && b == Blocks.NETHERITE_BLOCK)                        return "Netherite Block";
+            if (detectBeacon.get()               && b == Blocks.BEACON)                                 return "Beacon";
+            if (detectReinforcedDeepslate.get()  && b == Blocks.REINFORCED_DEEPSLATE)                   return "Reinforced Deepslate";
+            if (detectChests.get()               && (b == Blocks.CHEST || b == Blocks.TRAPPED_CHEST))   return "Chest";
+            if (detectEnderChests.get()          && b == Blocks.ENDER_CHEST)                            return "Ender Chest";
+            if (detectHoppers.get()              && b == Blocks.HOPPER)                                 return "Hopper";
+            if (detectPistons.get()              && (b == Blocks.PISTON || b == Blocks.STICKY_PISTON))  return "Piston";
+            if (detectRedstone.get()             && isRedstone(b))                                      return "Redstone";
+
+            // Spawners — read NBT to determine mob type
+            if (b == Blocks.SPAWNER) return identifySpawner(pos.toImmutable());
+
+            // Heads
+            if (detectDragonHead.get()  && (b == Blocks.DRAGON_HEAD  || b == Blocks.DRAGON_WALL_HEAD))  return "Dragon Head";
+            if (detectZombieHead.get()  && (b == Blocks.ZOMBIE_HEAD   || b == Blocks.ZOMBIE_WALL_HEAD))  return "Zombie Head";
+            if (detectCreeperHead.get() && (b == Blocks.CREEPER_HEAD  || b == Blocks.CREEPER_WALL_HEAD)) return "Creeper Head";
+            if (detectPiglinHead.get()  && (b == Blocks.PIGLIN_HEAD   || b == Blocks.PIGLIN_WALL_HEAD))  return "Piglin Head";
+
+            return null;
+        }
+
+        private String identifySpawner(BlockPos immutablePos) {
+            try {
+                var be = mc.world.getBlockEntity(immutablePos);
+                if (!(be instanceof MobSpawnerBlockEntity spawner)) return null;
+                NbtCompound nbt = spawner.createNbt(mc.world.getRegistryManager());
+                String mobId = nbt.getCompound("SpawnData").getCompound("entity").getString("id");
+
+                if (mobId.equals("minecraft:skeleton")    && detectSkeletonSpawner.get()) return "Skeleton Spawner";
+                if (mobId.equals("minecraft:zombie")      && detectZombieSpawner.get())   return "Zombie Spawner";
+                if (mobId.equals("minecraft:spider")      && detectSpiderSpawner.get())   return "Spider Spawner";
+                if (mobId.equals("minecraft:cave_spider") && detectSpiderSpawner.get())   return "Cave Spider Spawner";
+                if (mobId.equals("minecraft:blaze")       && detectBlazeSpawner.get())    return "Blaze Spawner";
+            } catch (Exception ignored) {}
             return null;
         }
 
         private boolean isRedstone(Block b) {
-            return b == Blocks.REDSTONE_WIRE
-                || b == Blocks.REDSTONE_TORCH
-                || b == Blocks.REDSTONE_WALL_TORCH
-                || b == Blocks.COMPARATOR
-                || b == Blocks.REPEATER
-                || b == Blocks.REDSTONE_BLOCK;
+            return b == Blocks.REDSTONE_WIRE || b == Blocks.REDSTONE_TORCH
+                || b == Blocks.REDSTONE_WALL_TORCH || b == Blocks.COMPARATOR
+                || b == Blocks.REPEATER || b == Blocks.REDSTONE_BLOCK;
         }
 
         @EventHandler
